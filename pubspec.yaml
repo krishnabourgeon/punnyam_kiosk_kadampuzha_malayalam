@@ -43,6 +43,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/fonts/NotoSansMalayalam-Regular.ttf
 
   # fonts:
   #   - family: ShipporiAntiqueB1
