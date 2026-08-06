@@ -511,10 +511,35 @@ class _MuttarukkalBookingScreenState extends State<MuttarukkalBookingScreen> {
   final ValueNotifier<double> netBagTotal = ValueNotifier<double>(0);
   final ValueNotifier<double> muttarukkalTotal = ValueNotifier<double>(0);
 
+  // Populated from the pooja master data (getPoojaDetails), so the printed
+  // / saved name always matches the API's own name/name_mal instead of a
+  // hand-maintained translation.
+  String? _muttarukkalName;
+  String? _muttarukkalNameMal;
+  String? _coconutName;
+  String? _coconutNameMal;
+  String? _netBagName;
+  String? _netBagNameMal;
+
   String get _label =>
       widget.lanid == 1
           ? "Muttarukkal with Coconut"
           : "മുട്ടറുക്കൽ (തേങ്ങയോടെ)";
+
+  String get _muttarukkalDisplayName =>
+      widget.lanid == 1
+          ? (_muttarukkalName ?? "Muttarukkal")
+          : (_muttarukkalNameMal ?? "മുട്ടറുക്കൽ");
+
+  String get _coconutDisplayName =>
+      widget.lanid == 1
+          ? (_coconutName ?? "Coconut")
+          : (_coconutNameMal ?? "തേങ്ങ");
+
+  String get _netBagDisplayName =>
+      widget.lanid == 1
+          ? (_netBagName ?? "Net Bag")
+          : (_netBagNameMal ?? "നെറ്റ് ബാഗ്");
 
   @override
   void initState() {
@@ -526,18 +551,24 @@ class _MuttarukkalBookingScreenState extends State<MuttarukkalBookingScreen> {
   }
 
   Future<void> _loadRate() async {
-    final rates = await context.read<HomeProvider>().getMuttarukkalAndCoconutRates();
+    final info = await context.read<HomeProvider>().getMuttarukkalAndCoconutInfo();
     if (!mounted) return;
-    muttarukkalUnitRate.value = rates.$1;
-    coconutUnitRate.value = rates.$2;
-    unitRate.value = rates.$1 + rates.$2;
+    muttarukkalUnitRate.value = info.muttarukkalRate;
+    coconutUnitRate.value = info.coconutRate;
+    _muttarukkalName = info.muttarukkalName;
+    _muttarukkalNameMal = info.muttarukkalNameMal;
+    _coconutName = info.coconutName;
+    _coconutNameMal = info.coconutNameMal;
+    unitRate.value = info.muttarukkalRate + info.coconutRate;
     _recalcTotal();
   }
 
   Future<void> _loadNetBagRate() async {
-    final rate = await context.read<HomeProvider>().getNetBagRate();
+    final info = await context.read<HomeProvider>().getNetBagInfo();
     if (!mounted) return;
-    netBagRate.value = rate;
+    netBagRate.value = info.rate;
+    _netBagName = info.name;
+    _netBagNameMal = info.nameMal;
     _recalcTotal();
   }
 
@@ -593,7 +624,7 @@ class _MuttarukkalBookingScreenState extends State<MuttarukkalBookingScreen> {
 
     await home.addToPoojaDetails(
       name: "Kiosk User",
-      poojaname: "Muttarukkal",
+      poojaname: _muttarukkalDisplayName,
       diety: _label,
       poojaid: HomeProvider.muttarukkalPoojaId,
       starid: 28,
@@ -605,7 +636,7 @@ class _MuttarukkalBookingScreenState extends State<MuttarukkalBookingScreen> {
 
     await home.addToPoojaDetails(
       name: "Kiosk User",
-      poojaname: "Coconut",
+      poojaname: _coconutDisplayName,
       diety: _label,
       poojaid: HomeProvider.coconutPoojaId,
       starid: 28,
@@ -619,9 +650,9 @@ class _MuttarukkalBookingScreenState extends State<MuttarukkalBookingScreen> {
     if (nb > 0) {
       await home.addToPoojaDetails(
         name: "Kiosk User",
-        poojaname: "Net Bag",
-        diety: "Net Bag",
-        star: "Net Bag",
+        poojaname: _netBagDisplayName,
+        diety: _netBagDisplayName,
+        star: _netBagDisplayName,
         poojaid: HomeProvider.netBagPoojaId,
         starid: 28,
         dietyid: 4,

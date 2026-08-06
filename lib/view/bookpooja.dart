@@ -787,9 +787,13 @@
 
 
 
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:http/http.dart' as http;
 import 'package:kiosk/color_pallatte.dart';
 import 'package:kiosk/extension.dart';
 import 'package:kiosk/fontpallate.dart';
@@ -812,6 +816,92 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
   TextEditingController name = TextEditingController();
   TextEditingController amt = TextEditingController();
   DateTime? selectedDate;
+
+  // Live English-to-Malayalam transliteration for the Name field.
+  // _romanName tracks what the user actually typed (Latin letters); the
+  // visible `name` field is replaced with the transliterated Malayalam
+  // once they pause typing, only when the Malayalam language is selected.
+  String _romanName = '';
+  int _lastNameFieldLength = 0;
+  bool _isProgrammaticNameUpdate = false;
+  Timer? _transliterateDebounce;
+
+  void _resetNameTransliterationState() {
+    _romanName = '';
+    _lastNameFieldLength = 0;
+    _transliterateDebounce?.cancel();
+  }
+
+  void _onNameChanged(String value) {
+    if (_isProgrammaticNameUpdate) {
+      _isProgrammaticNameUpdate = false;
+      _lastNameFieldLength = value.length;
+      return;
+    }
+
+    if (widget.lanid == 1) {
+      // English selected — type as-is, no transliteration.
+      _lastNameFieldLength = value.length;
+      return;
+    }
+
+    // Mirror this edit onto the roman (Latin) buffer.
+    final delta = value.length - _lastNameFieldLength;
+    if (delta > 0) {
+      _romanName += value.substring(value.length - delta);
+    } else if (delta < 0) {
+      final removeCount = -delta;
+      _romanName = _romanName.length >= removeCount
+          ? _romanName.substring(0, _romanName.length - removeCount)
+          : '';
+    }
+    _lastNameFieldLength = value.length;
+
+    _transliterateDebounce?.cancel();
+    if (_romanName.trim().isEmpty) return;
+    _transliterateDebounce = Timer(
+      const Duration(milliseconds: 1500),
+      _transliterateName,
+    );
+  }
+
+  Future<void> _transliterateName() async {
+    final source = _romanName;
+    if (source.trim().isEmpty) return;
+    try {
+      final uri = Uri.parse(
+        'https://inputtools.google.com/request?text=${Uri.encodeComponent(source)}'
+        '&itc=ml-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8',
+      );
+      final response = await http.get(uri);
+      if (response.statusCode != 200) return;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List || decoded.isEmpty || decoded[0] != 'SUCCESS') {
+        return;
+      }
+      final results = decoded[1] as List;
+      if (results.isEmpty) return;
+      final suggestions = results[0][1] as List;
+      if (suggestions.isEmpty) return;
+      final malayalam = suggestions[0] as String;
+
+      if (!mounted || source != _romanName) return;
+      _isProgrammaticNameUpdate = true;
+      name.value = TextEditingValue(
+        text: malayalam,
+        selection: TextSelection.collapsed(offset: malayalam.length),
+      );
+      _lastNameFieldLength = malayalam.length;
+    } catch (e) {
+      debugPrint('Transliteration error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _transliterateDebounce?.cancel();
+    super.dispose();
+  }
 
   Future<void> pickDate() async {
     final home = context.read<HomeProvider>();
@@ -837,16 +927,45 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
       if (widget.isDonate) {
         //home.updateDietyId(id: null, name: "DONATION");
         home.updateDietyId(id: 8, name: "DONATION");
-        home.updateSelextedPoojaId(poojaname: "DONATION", poojaid: 29, rate: null);
+        // Pull the Malayalam label straight from the deities API (name_mal for
+        // id 8) instead of a hand-maintained translation, with the previous
+        // hardcoded guess kept only as a fallback if that data isn't loaded yet.
+        final donationDeities =
+            home.deitiesResponse?.data?.where((d) => d.id == 8).toList() ?? [];
+        final donationNameMal =
+            donationDeities.isNotEmpty ? donationDeities.first.nameMal : null;
+        home.updateSelextedPoojaId(
+          poojaname: widget.lanid == 1 ? "DONATION" : (donationNameMal ?? "ദാനം"),
+          poojaid: 29,
+          rate: null,
+        );
 
       } else {
         if (home.deitiesResponse?.data != null && home.deitiesResponse!.data!.isNotEmpty) {
           final firstDeity = home.deitiesResponse!.data!.first;
-          home.updateDietyId(id: firstDeity.id, name: firstDeity.name);
+          home.updateDietyId(
+            id: firstDeity.id,
+            name: widget.lanid == 1 ? firstDeity.name : firstDeity.nameMal,
+          );
           home.updateSelextedPoojaId(poojaid: null, poojaname: null, rate: null);
         }
       }
     });
+  }
+
+  // Resolves the diety text saved with a pooja entry. For a normal deity
+  // selection this is already correctly localized by updateDietyId(); for
+  // Donation (an internal "DONATION" sentinel, kept in English so the many
+  // == "DONATION" checks elsewhere keep working) this looks up the real
+  // Malayalam label from the deities API (id 8) instead of a guessed one.
+  String? _dietyDisplayName(HomeProvider home) {
+    if (home.dietyIName != "DONATION") return home.dietyIName;
+    if (widget.lanid == 1) return "DONATION";
+    final donationDeities =
+        home.deitiesResponse?.data?.where((d) => d.id == 8).toList() ?? [];
+    return donationDeities.isNotEmpty
+        ? (donationDeities.first.nameMal ?? "ദാനം")
+        : "ദാനം";
   }
 
   @override
@@ -977,6 +1096,7 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                               ),
                                               child: TextField(
                                                 controller: name,
+                                                //onChanged: _onNameChanged,
                                                 style:
                                                     Fontpalette.blackinter45400,
                                                 textAlignVertical:
@@ -1066,11 +1186,15 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                                         .starsResponse
                                                         ?.data![index]
                                                         .id,
-                                                starname:
-                                                    home
+                                                starname: widget.lanid == 1
+                                                    ? home
                                                         .starsResponse
                                                         ?.data![index]
-                                                        .nameEng,
+                                                        .nameEng
+                                                    : home
+                                                        .starsResponse
+                                                        ?.data![index]
+                                                        .nameMal,
                                               );
                                             },
                                             child: Container(
@@ -1142,7 +1266,9 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                                     FocusScope.of(context).unfocus();
                                                     home.updateDietyId(
                                                       id: deity.id,
-                                                      name: deity.name,
+                                                      name: widget.lanid == 1
+                                                          ? deity.name
+                                                          : deity.nameMal,
                                                     );
                                                   },
                                                   child: Column(
@@ -1332,7 +1458,7 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                             star: home.selectedStarrname,
                                             date: home.dateapi,
                                             dietyid: home.dietyId,
-                                            diety: home.dietyIName,
+                                            diety: _dietyDisplayName(home),
 
                                             poojaname: home.selectedPoojaName,
                                             poojaid: home.selectedPoojaId,
@@ -1345,6 +1471,7 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                           );
                                           home.clearStoredData();
                                           name.clear();
+                                          _resetNameTransliterationState();
                                           amt.clear();
                                         },
                                         child: Container(
@@ -1431,7 +1558,7 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                         isEnabled.value = true;
                                         await home.addToPoojaDetails(
                                           name: name.text,
-                                          diety: home.dietyIName,
+                                          diety: _dietyDisplayName(home),
                                           star: home.selectedStarrname,
 
                                           poojaname: home.selectedPoojaName,
@@ -1455,6 +1582,7 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                             );
                                             home.clearStoredData();
                                             name.clear();
+                                            _resetNameTransliterationState();
                                             amt.clear();
                                             isEnabled.value = false;
                                           },
@@ -1473,7 +1601,7 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                               home.selectedPoojaId != null) {
                                             await home.addToPoojaDetails(
                                               name: name.text,
-                                              diety: home.dietyIName,
+                                              diety: _dietyDisplayName(home),
                                               star: home.selectedStarrname,
 
                                               poojaname: home.selectedPoojaName,
@@ -1497,6 +1625,7 @@ class _BookpoojascreenState extends State<Bookpoojascreen> {
                                             amt.clear();
                                             home.clearStoredData();
                                             name.clear();
+                                            _resetNameTransliterationState();
                                             isEnabled.value = false;
                                           },
                                           onFailure: () {
@@ -1582,7 +1711,7 @@ class Listpooja extends StatelessWidget {
                           onTap: () {
                             FocusScope.of(context).unfocus();
                             home.updateSelextedPoojaId(
-                              poojaname: item.name,
+                              poojaname: lanid == 1 ? item.name : item.nameMal,
                               poojaid: item.poojaId,
                               rate: item.rate,
                             );

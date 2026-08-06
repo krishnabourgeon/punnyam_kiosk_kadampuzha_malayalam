@@ -777,6 +777,26 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                                   .previewBillResponse
                                                   ?.data
                                                   ?.poojaDetails![index];
+                                          // The preview API doesn't receive/echo the pooja
+                                          // name in the selected language (only IDs), so
+                                          // fall back to the locally-tracked, already
+                                          // localized name for display.
+                                          final localPoojaName =
+                                              index < home.pooja.length
+                                                  ? home.pooja[index].pooja
+                                                  : null;
+                                          // "Kiosk User" is just a placeholder sent to
+                                          // satisfy the API for Muttarukkal/Coconut/Net
+                                          // Bag entries — not a real name, so don't show it.
+                                          final rawDisplayName =
+                                              (index < home.pooja.length
+                                                  ? home.pooja[index].name
+                                                  : null) ??
+                                              item?.name;
+                                          final displayName =
+                                              rawDisplayName == "Kiosk User"
+                                                  ? ""
+                                                  : rawDisplayName;
                                           return Container(
                                             decoration: BoxDecoration(
                                               borderRadius:
@@ -793,7 +813,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                                   children: [
                                                     Expanded(
                                                       child: Text(
-                                                        "${item?.name}",
+                                                        "$displayName",
                                                         style:
                                                             Fontpalette
                                                                 .black45600,
@@ -872,7 +892,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                                                 SizedBox(
                                                                   width: 600.w,
                                                                   child: Text(
-                                                                    "${item?.pooja}",
+                                                                    "${localPoojaName ?? item?.pooja}",
                                                                     style:
                                                                         Fontpalette
                                                                             .black45600,
@@ -963,6 +983,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                               selectedPaymentMode,
                                             );
                                         Navigator.pop(context); // Dismiss the waiting dialog
+
                                         bool connected =
                                             await PrinterService.connect();
                                         print(
@@ -1005,12 +1026,23 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                                 'dd-MM-yyyy HH:mm:ss',
                                               ).format(parsedDate);
                                               if (connected) {
+                                                final templeData =
+                                                    home
+                                                        .saveBillResponse
+                                                        ?.temple;
+                                                // Malayalam selected (lanid != 1) and a
+                                                // translated name is available — otherwise
+                                                // fall back to the English name.
+                                                final templeName =
+                                                    widget.lanid != 1 &&
+                                                            (templeData
+                                                                    ?.nameMal
+                                                                    ?.isNotEmpty ??
+                                                                false)
+                                                        ? templeData!.nameMal
+                                                        : templeData?.name;
                                                 await PrinterService.printReceipt(
-                                                  temple:
-                                                      home
-                                                          .saveBillResponse
-                                                          ?.temple
-                                                          ?.name,
+                                                  temple: templeName,
                                                   templeAddress:
                                                       home
                                                           .saveBillResponse

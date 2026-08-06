@@ -350,7 +350,21 @@ class HomeProvider extends ProviderHelperClass with ChangeNotifier {
   static const int coconutPoojaId = 39;
   static const int netBagPoojaId = 58;
 
-  Future<(double muttarukkal, double coconut)> getMuttarukkalAndCoconutRates() async {
+  // Rate + name/name_mal come straight from the pooja master data (same
+  // fields the API returns for the normal pooja list), so Muttarukkal/
+  // Coconut/Net Bag print and save with the real Malayalam name instead
+  // of a hand-maintained translation.
+  Future<
+    ({
+      double muttarukkalRate,
+      String? muttarukkalName,
+      String? muttarukkalNameMal,
+      double coconutRate,
+      String? coconutName,
+      String? coconutNameMal,
+    })
+  >
+  getMuttarukkalAndCoconutInfo() async {
     try {
       final results = await Future.wait([
         serviceConfig.getPoojaDetails(muttarukkalPoojaId),
@@ -358,30 +372,57 @@ class HomeProvider extends ProviderHelperClass with ChangeNotifier {
       ]);
 
       double muttarukkalRate = 0;
-      double coconutRate = 0;
+      String? muttarukkalName;
+      String? muttarukkalNameMal;
       if (results[0].isValue) {
-        muttarukkalRate = (results[0].asValue!.value as PoojaDetailsModel).data.rate.toDouble();
+        final data = (results[0].asValue!.value as PoojaDetailsModel).data;
+        muttarukkalRate = data.rate.toDouble();
+        muttarukkalName = data.name;
+        muttarukkalNameMal = data.nameMal;
       }
+
+      double coconutRate = 0;
+      String? coconutName;
+      String? coconutNameMal;
       if (results[1].isValue) {
-        coconutRate = (results[1].asValue!.value as PoojaDetailsModel).data.rate.toDouble();
+        final data = (results[1].asValue!.value as PoojaDetailsModel).data;
+        coconutRate = data.rate.toDouble();
+        coconutName = data.name;
+        coconutNameMal = data.nameMal;
       }
-      return (muttarukkalRate, coconutRate);
+
+      return (
+        muttarukkalRate: muttarukkalRate,
+        muttarukkalName: muttarukkalName,
+        muttarukkalNameMal: muttarukkalNameMal,
+        coconutRate: coconutRate,
+        coconutName: coconutName,
+        coconutNameMal: coconutNameMal,
+      );
     } catch (e) {
-      debugPrint('exception in getMuttarukkalAndCoconutRates: $e');
-      return (0.0, 0.0);
+      debugPrint('exception in getMuttarukkalAndCoconutInfo: $e');
+      return (
+        muttarukkalRate: 0.0,
+        muttarukkalName: null,
+        muttarukkalNameMal: null,
+        coconutRate: 0.0,
+        coconutName: null,
+        coconutNameMal: null,
+      );
     }
   }
 
-  Future<double> getNetBagRate() async {
+  Future<({double rate, String? name, String? nameMal})> getNetBagInfo() async {
     try {
       final res = await serviceConfig.getPoojaDetails(netBagPoojaId);
       if (res.isValue) {
-        return (res.asValue!.value as PoojaDetailsModel).data.rate.toDouble();
+        final data = (res.asValue!.value as PoojaDetailsModel).data;
+        return (rate: data.rate.toDouble(), name: data.name, nameMal: data.nameMal);
       }
-      return 0;
+      return (rate: 0.0, name: null, nameMal: null);
     } catch (e) {
-      debugPrint('exception in getNetBagRate: $e');
-      return 0;
+      debugPrint('exception in getNetBagInfo: $e');
+      return (rate: 0.0, name: null, nameMal: null);
     }
   }
 

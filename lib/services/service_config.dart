@@ -150,6 +150,7 @@ class ServiceConfig {
       return Result.error(errorResponseModel);
     } else {
       var response = res.asValue!.value;
+      debugPrint('preview response $response');
       PreviewBillResponse previewBillResponse = PreviewBillResponse.fromJson(
         response,
       );

@@ -7,8 +7,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
-import android.graphics.Typeface
 import android.hardware.usb.UsbManager
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -21,18 +19,10 @@ class PrinterPlugin(
 
     // The printer only understands GB2312 (see PrintCmd.PrintString), which has
     // no Malayalam glyphs — those bytes come back as literal '?' on paper.
-    // Malayalam lines are rendered to a bitmap with a bundled Unicode font
-    // instead and sent as an image so the printer's font ROM is bypassed.
-    private val malayalamTypeface: Typeface? by lazy {
-        try {
-            Typeface.createFromAsset(
-                context.assets,
-                "flutter_assets/assets/fonts/NotoSansMalayalam-Regular.ttf"
-            )
-        } catch (e: Exception) {
-            null
-        }
-    }
+    // Malayalam lines are rendered to a bitmap using the system's default
+    // typeface (Android's built-in font fallback handles Malayalam glyph
+    // shaping reliably) and sent as an image so the printer's font ROM is
+    // bypassed.
 
     init {
         usbDriver = UsbDriver(
@@ -49,7 +39,7 @@ class PrinterPlugin(
 
     private fun printLine(text: String) {
         if (text.isEmpty()) return
-        if (containsMalayalam(text) && malayalamTypeface != null) {
+        if (containsMalayalam(text)) {
             printTextAsBitmap(text)
         } else {
             usbDriver?.write(PrintCmd.PrintString(text, 0))
@@ -60,18 +50,16 @@ class PrinterPlugin(
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
             textSize = 32f
-            typeface = malayalamTypeface
         }
 
-        val printWidth = 384 // dots, matches the 32-char text line width used elsewhere
-        val bounds = Rect()
-        paint.getTextBounds(text, 0, text.length, bounds)
-        val lineHeight = bounds.height() + 16
+        val printWidth = 256  // dots, matches the 32-char text line width used elsewhere
+        val fm = paint.fontMetrics
+        val lineHeight = kotlin.math.ceil(fm.descent - fm.ascent).toInt() + 10
 
         val bitmap = Bitmap.createBitmap(printWidth, lineHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
-        canvas.drawText(text, 4f, (lineHeight - 12).toFloat(), paint)
+        canvas.drawText(text, 5f, 5f - fm.ascent, paint)
 
         val bytes = PrintCmd.PrintBitmap(bitmap)
         if (bytes != null) {
