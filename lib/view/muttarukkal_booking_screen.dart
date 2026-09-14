@@ -524,7 +524,7 @@ class _MuttarukkalBookingScreenState extends State<MuttarukkalBookingScreen> {
   String get _label =>
       widget.lanid == 1
           ? "Muttarukkal with Coconut"
-          : "മുട്ടറുക്കൽ (തേങ്ങയോടെ)";
+          : "മുട്ടറുക്കൽ നാളികേരത്തോടുകൂടി";
 
   String get _muttarukkalDisplayName =>
       widget.lanid == 1
@@ -534,7 +534,7 @@ class _MuttarukkalBookingScreenState extends State<MuttarukkalBookingScreen> {
   String get _coconutDisplayName =>
       widget.lanid == 1
           ? (_coconutName ?? "Coconut")
-          : (_coconutNameMal ?? "തേങ്ങ");
+          : (_coconutNameMal ?? "നാളികേരത്തോടുകൂടി");
 
   String get _netBagDisplayName =>
       widget.lanid == 1

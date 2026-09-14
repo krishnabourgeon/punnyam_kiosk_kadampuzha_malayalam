@@ -95,14 +95,44 @@ class HomeProvider extends ProviderHelperClass with ChangeNotifier {
     notifyListeners();
   }
 
-  removePooja({int? dietyid, int? poojaid, String? name, var val}) async {
+  // Removes the exact pooja entry at [index] in the preview list — matching
+  // by dietyid/poojaid/name instead would remove every entry that shares
+  // those values, wiping out other bookings of the same pooja (e.g. two
+  // separate "Muttarukkal with Coconut" additions) instead of just the one
+  // the user tapped Remove on.
+  removePooja({int? index, var val}) async {
     updateRemovepoojaLoaderState(LoaderState.loading);
-    pooja.removeWhere(
-      (items) =>
-          items.deityId == dietyid &&
-          items.poojaId == poojaid &&
-          items.name == name,
-    );
+    if (index != null && index >= 0 && index < pooja.length) {
+      pooja.removeAt(index);
+    }
+    grossamount = getGrossAmount(pooja);
+    if (pooja.isEmpty) {
+      val.pop();
+    } else {
+      await getPreviewBill();
+    }
+    updateRemovepoojaLoaderState(LoaderState.loaded);
+
+    notifyListeners();
+  }
+
+  // Muttarukkal and its Coconut line are added together as one unit,
+  // immediately adjacent in the list (see MuttarukkalBookingScreen._addEntry)
+  // — removing the Muttarukkal entry at [index] should take only its own
+  // paired Coconut line (index + 1) with it, not every Muttarukkal/Coconut
+  // entry in the bill, so a second "Muttarukkal with Coconut" addition is
+  // left untouched. Net Bag is independent and stays either way.
+  removeMuttarukkalGroup({int? index, var val}) async {
+    updateRemovepoojaLoaderState(LoaderState.loading);
+    if (index != null && index >= 0 && index < pooja.length) {
+      final toRemove = <PoojaDetails>[pooja[index]];
+      final coconutIndex = index + 1;
+      if (coconutIndex < pooja.length &&
+          pooja[coconutIndex].poojaId == coconutPoojaId) {
+        toRemove.add(pooja[coconutIndex]);
+      }
+      pooja.removeWhere((item) => toRemove.contains(item));
+    }
     grossamount = getGrossAmount(pooja);
     if (pooja.isEmpty) {
       val.pop();
@@ -257,7 +287,13 @@ class HomeProvider extends ProviderHelperClass with ChangeNotifier {
       if (res.isValue) {
         CounterModel? counters = res.asValue!.value;
         if (counters?.data != null) {
-          counterdata = counters?.data;
+          counterdata =
+              counters?.data
+                  ?.where(
+                    (element) =>
+                        (element.name ?? "").trim().toUpperCase() == "KIOSK",
+                  )
+                  .toList();
           counterName.clear();
           counterId.clear();
           counterdata?.forEach((element) {

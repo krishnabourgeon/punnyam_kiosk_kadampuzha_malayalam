@@ -820,56 +820,79 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                                       ),
                                                     ),
                                                     10.horizontalSpace,
-                                                    InkWell(
-                                                      onTap: () async {
-                                                        await home.removePooja(
-                                                          val: Navigator.of(
-                                                            context,
-                                                          ),
-                                                          dietyid:
-                                                              item?.deityId,
-                                                          name: item?.name,
-                                                          poojaid:
-                                                              item?.poojaId,
-                                                        );
-                                                      },
-                                                      child: Container(
-                                                        decoration: BoxDecoration(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                20.r,
+                                                    // The Coconut line is
+                                                    // always added together
+                                                    // with its Muttarukkal
+                                                    // line — it's removed
+                                                    // automatically when the
+                                                    // Muttarukkal line is
+                                                    // removed, so it doesn't
+                                                    // get its own button.
+                                                    if (item?.poojaId ==
+                                                        HomeProvider
+                                                            .coconutPoojaId)
+                                                      SizedBox()
+                                                    else
+                                                      InkWell(
+                                                        onTap: () async {
+                                                          final isMuttarukkal =
+                                                              item?.poojaId ==
+                                                              HomeProvider
+                                                                  .muttarukkalPoojaId;
+                                                          if (isMuttarukkal) {
+                                                            await home.removeMuttarukkalGroup(
+                                                              val: Navigator.of(
+                                                                context,
                                                               ),
-                                                          color:
-                                                              const Color.fromARGB(
-                                                                255,
-                                                                238,
-                                                                102,
-                                                                23,
+                                                              index: index,
+                                                            );
+                                                          } else {
+                                                            await home.removePooja(
+                                                              val: Navigator.of(
+                                                                context,
                                                               ),
-                                                        ),
-                                                        child:
-                                                            home.poojaremoveloader ==
-                                                                    LoaderState
-                                                                        .loading
-                                                                ? CircularProgressIndicator(
-                                                                  color:
-                                                                      Colors
-                                                                          .white,
-                                                                ).horizontalPadding(
-                                                                  20.w,
-                                                                )
-                                                                : Text(
-                                                                  "Remove",
-                                                                  style:
-                                                                      Fontpalette
-                                                                          .white38500,
-                                                                ).symmetricPadding(
-                                                                  vertical: 5.h,
-                                                                  horizontal:
-                                                                      20.w,
+                                                              index: index,
+                                                            );
+                                                          }
+                                                        },
+                                                        child: Container(
+                                                          decoration: BoxDecoration(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  20.r,
                                                                 ),
+                                                            color:
+                                                                const Color.fromARGB(
+                                                                  255,
+                                                                  238,
+                                                                  102,
+                                                                  23,
+                                                                ),
+                                                          ),
+                                                          child:
+                                                              home.poojaremoveloader ==
+                                                                      LoaderState
+                                                                          .loading
+                                                                  ? CircularProgressIndicator(
+                                                                    color:
+                                                                        Colors
+                                                                            .white,
+                                                                  ).horizontalPadding(
+                                                                    20.w,
+                                                                  )
+                                                                  : Text(
+                                                                    "Remove",
+                                                                    style:
+                                                                        Fontpalette
+                                                                            .white38500,
+                                                                  ).symmetricPadding(
+                                                                    vertical:
+                                                                        5.h,
+                                                                    horizontal:
+                                                                        20.w,
+                                                                  ),
+                                                        ),
                                                       ),
-                                                    ),
                                                   ],
                                                 ),
                                                 20.verticalSpace,

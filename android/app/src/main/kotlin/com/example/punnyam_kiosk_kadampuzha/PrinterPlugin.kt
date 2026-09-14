@@ -1,6 +1,4 @@
 package com.example.punnyam_kiosk_kadampuzha
-import com.kioskworldline.com.UsbDriver
-import com.kioskworldline.com.PrintCmd
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -8,6 +6,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.hardware.usb.UsbManager
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.util.Log
+import com.kioskworldline.com.PrintCmd
+import com.kioskworldline.com.UsbDriver
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
@@ -47,24 +51,46 @@ class PrinterPlugin(
     }
 
     private fun printTextAsBitmap(text: String) {
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.BLACK
-            textSize = 32f
+            textSize = 24f
         }
 
-        val printWidth = 256  // dots, matches the 32-char text line width used elsewhere
-        val fm = paint.fontMetrics
-        val lineHeight = kotlin.math.ceil(fm.descent - fm.ascent).toInt() + 10
+        // Must match the printer's actual dot width (same width the 32-char
+        // GB2312 text lines use elsewhere) - going wider makes the native
+        // PrintBitmap() call silently fail, which falls back to GB2312 and
+        // Malayalam stops printing.
+        val maxLineWidthPx = 256
+        val padding = 10
 
-        val bitmap = Bitmap.createBitmap(printWidth, lineHeight, Bitmap.Config.ARGB_8888)
+        val layout = StaticLayout(
+            text,
+            paint,
+            maxLineWidthPx,
+            Layout.Alignment.ALIGN_NORMAL,
+            1f,
+            0f,
+            false
+        )
+
+        val bitmapHeight = layout.height.coerceAtLeast(40) + padding * 2
+        val bitmap = Bitmap.createBitmap(maxLineWidthPx, bitmapHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
-        canvas.drawText(text, 5f, 5f - fm.ascent, paint)
+        canvas.save()
+        canvas.translate(padding.toFloat(), padding.toFloat())
+        layout.draw(canvas)
+        canvas.restore()
 
         val bytes = PrintCmd.PrintBitmap(bitmap)
         if (bytes != null) {
             usbDriver?.write(bytes)
         } else {
+            Log.e(
+                "PrinterPlugin",
+                "PrintBitmap failed for \"$text\" (${bitmap.width}x${bitmap.height}); " +
+                    "falling back to GB2312, Malayalam glyphs will not render"
+            )
             // Fall back to the GB2312 path (renders as '?') rather than dropping the line silently.
             usbDriver?.write(PrintCmd.PrintString(text, 0))
         }
