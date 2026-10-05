@@ -28,6 +28,7 @@ class PreviewScreen extends StatefulWidget {
 }
 
 class _PreviewScreenState extends State<PreviewScreen> {
+ //  bool kSkipPaymentAndPrint = true; // set false for production
   final ValueNotifier<bool> isEnabled = ValueNotifier<bool>(false);
   // final _flutterThermalPrinterPlugin = FlutterThermalPrinter.instance;
 
@@ -986,6 +987,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 valueListenable: isEnabled,
                                 builder:
                                     (context, value, child) => InkWell(
+                                      //---------------------------------------------------------------------------------------
                                       onTap: () async {
                                         isEnabled.value = true;
                                         String? selectedPaymentMode =
@@ -1185,6 +1187,112 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                           );
                                         }
                                       },
+
+//----------------------------------------------------------------------------------------------------------------------------------
+
+// onTap: () async {
+//   isEnabled.value = true;
+
+//   String? selectedPaymentMode;
+//   String paymentStatus;
+//   bool connected = false;
+
+//   if (kSkipPaymentAndPrint) {
+//     // TEST MODE: no payment, no printer
+//     selectedPaymentMode = "CARD";
+//     paymentStatus = "success";
+//   } else {
+//     selectedPaymentMode = await selectPaymentMode(context);
+//     print("Selected Payment Mode: $selectedPaymentMode");
+//     if (selectedPaymentMode == null) {
+//       isEnabled.value = false;
+//       return;
+//     }
+//     showWaitingDialog();
+//     paymentStatus = await saleTransaction(
+//       home.grossamount?.toStringAsFixed(2),
+//       selectedPaymentMode,
+//     );
+//     Navigator.pop(context); // dismiss waiting dialog
+//     connected = await PrinterService.connect();
+//   }
+
+//   print("Payment Status..button: $paymentStatus");
+
+//   if (paymentStatus == "timeout") {
+//     isEnabled.value = false;
+//     Helpers.successToast("Payment timed out. Please try again.");
+//     return;
+//   }
+
+//   if (paymentStatus == "success") {
+//     await home.saveBill(
+//       transid: "test",
+//       paymentMode: selectedPaymentMode == "CARD" ? 4 : 6,
+//       onSuccess: () async {
+//         Helpers.successToast(
+//           home.saveBillResponse?.message ?? 'Bill Saved',
+//         );
+
+//         if (!kSkipPaymentAndPrint && connected) {
+//           final parsedDate = DateTime.parse(
+//             home.saveBillResponse?.summary?.billDate ?? '',
+//           );
+//           final formatted =
+//               DateFormat('dd-MM-yyyy HH:mm:ss').format(parsedDate);
+//           final templeData = home.saveBillResponse?.temple;
+//           final templeName = widget.lanid != 1 &&
+//                   (templeData?.nameMal?.isNotEmpty ?? false)
+//               ? templeData!.nameMal
+//               : templeData?.name;
+
+//           await PrinterService.printReceipt(
+//             temple: templeName,
+//             templeAddress: templeData?.addressLine1 ?? '',
+//             templePlace: templeData?.addressLine2 ?? '',
+//             today: formatted,
+//             id: home.saveBillResponse?.summary?.id,
+//             mode: home.saveBillResponse?.summary?.mode.toString(),
+//             total: home.saveBillResponse?.summary?.total.toString(),
+//             website: templeData?.website ?? '',
+//             items: home.pooja
+//                 .asMap()
+//                 .entries
+//                 .map((entry) => {
+//                       "personId": entry.key + 1,
+//                       "personName": entry.value.name,
+//                       "deity": entry.value.diety,
+//                       "star": entry.value.star,
+//                       "pooja": entry.value.pooja,
+//                       "qty": entry.value.qty,
+//                       "rate": entry.value.rate,
+//                       "date": entry.value.date,
+//                       "address": entry.value.address,
+//                     })
+//                 .toList(),
+//           );
+//         } else if (!kSkipPaymentAndPrint) {
+//           Helpers.successToast(
+//             "Failed to connect to printer. Bill saved but printing failed.",
+//           );
+//         }
+
+//         isEnabled.value = false;
+//         Navigator.pushAndRemoveUntil(
+//           context,
+//           MaterialPageRoute(builder: (context) => MyHomePage()),
+//           (route) => false,
+//         );
+//       },
+//       onFailure: () async {
+//         isEnabled.value = false;
+//       },
+//     );
+//   } else {
+//     isEnabled.value = false;
+//     showPaymentStatusDialog("Payment failed");
+//   }
+// },
                                       child: Container(
                                         decoration: BoxDecoration(
                                           borderRadius: BorderRadius.circular(

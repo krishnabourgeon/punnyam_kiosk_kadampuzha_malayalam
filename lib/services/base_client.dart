@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:kiosk/services/app_config.dart';
 import 'package:kiosk/services/helpers.dart';
@@ -47,8 +48,9 @@ class BaseClient {
             )
             .timeout(const Duration(seconds: timeDuration));
         return _processResponse(response);
-      } on SocketException {
-        throw FetchDataException('No Internet connection', uri.toString());
+      } on SocketException catch (e) {
+        // Keep the real cause (e.g. "Failed host lookup") in the message.
+        throw FetchDataException('No Internet connection - ${e.message}', uri.toString());
       } on TimeoutException {
         throw ApiNotRespondingException(
           'API not responded in time',
@@ -79,8 +81,9 @@ class BaseClient {
         // print(response.statusCode);
         // print(response.body);
         return _processResponse(response);
-      } on SocketException {
-        throw FetchDataException('No Internet connection', uri.toString());
+      } on SocketException catch (e) {
+        // Keep the real cause (e.g. "Failed host lookup") in the message.
+        throw FetchDataException('No Internet connection - ${e.message}', uri.toString());
       } on TimeoutException {
         throw ApiNotRespondingException(
           'API not responded in time',
@@ -92,6 +95,11 @@ class BaseClient {
 
   static dynamic _processResponse(http.Response response) {
     print(response.statusCode);
+    // Debug builds: log the server's reply for errors (e.g. the Laravel
+    // exception message on a 500) so the real cause is visible.
+    if (kDebugMode && response.statusCode >= 300) {
+      debugPrint('Error body (${response.request?.url}): ${response.body}');
+    }
     switch (response.statusCode) {
       case 200:
         // var responseJson = utf8.decode(response.bodyBytes);

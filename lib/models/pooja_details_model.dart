@@ -170,8 +170,9 @@ class PoojaDetailsModel {
     });
 
     factory PoojaDetailsModel.fromJson(Map<String, dynamic> json) => PoojaDetailsModel(
-        status: json["status"],
-        data: Data.fromJson(json["data"]),
+        status: json["status"] == true,
+        // data can be missing/null (e.g. unknown pooja id) - parse as empty.
+        data: Data.fromJson(json["data"] is Map<String, dynamic> ? json["data"] : const {}),
     );
 
     Map<String, dynamic> toJson() => {
@@ -184,9 +185,9 @@ class Data {
     int id;
     dynamic parentId;
     int ledId;
-    String name;
-    String nameMal;
-    int rate;
+    String? name;
+    String? nameMal;
+    num rate; // may come as int, double or "120.00"
     int status;
     int allowedQty;
     int code;
@@ -196,7 +197,7 @@ class Data {
     dynamic postelCharge;
     dynamic courierCharge;
     int rowcount;
-    String time;
+    String? time;
     int cat;
     int online;
     int block;
@@ -205,7 +206,7 @@ class Data {
     int noShowReport;
     int dpcat;
     int isKooru;
-    DateTime createdDate;
+    DateTime? createdDate;
     int forkiosk;
 
     Data({
@@ -237,33 +238,39 @@ class Data {
         required this.forkiosk,
     });
 
+    // Any field can come back null (or as a string) from the API, so numbers
+    // default to 0 instead of throwing "type 'Null' is not a subtype of 'int'".
+    static num _num(dynamic v) =>
+        v is num ? v : num.tryParse(v?.toString() ?? '') ?? 0;
+    static int _int(dynamic v) => _num(v).toInt();
+
     factory Data.fromJson(Map<String, dynamic> json) => Data(
-        id: json["id"],
+        id: _int(json["id"]),
         parentId: json["parent_id"],
-        ledId: json["led_id"],
-        name: json["name"],
-        nameMal: json["name_mal"],
-        rate: json["rate"],
-        status: json["status"],
-        allowedQty: json["allowed_qty"],
-        code: json["code"],
-        poojaCat: json["pooja_cat"],
-        counter: json["counter"],
-        isimp: json["isimp"],
+        ledId: _int(json["led_id"]),
+        name: json["name"]?.toString(),
+        nameMal: json["name_mal"]?.toString(),
+        rate: _num(json["rate"]),
+        status: _int(json["status"]),
+        allowedQty: _int(json["allowed_qty"]),
+        code: _int(json["code"]),
+        poojaCat: _int(json["pooja_cat"]),
+        counter: _int(json["counter"]),
+        isimp: _int(json["isimp"]),
         postelCharge: json["postel_charge"],
         courierCharge: json["courier_charge"],
-        rowcount: json["rowcount"],
-        time: json["time"],
-        cat: json["cat"],
-        online: json["online"],
-        block: json["block"],
-        counterBilling: json["counter_billing"],
-        specialPooja: json["special_pooja"],
-        noShowReport: json["no_show_report"],
-        dpcat: json["dpcat"],
-        isKooru: json["is_kooru"],
-        createdDate: DateTime.parse(json["created_date"]),
-        forkiosk: json["forkiosk"],
+        rowcount: _int(json["rowcount"]),
+        time: json["time"]?.toString(),
+        cat: _int(json["cat"]),
+        online: _int(json["online"]),
+        block: _int(json["block"]),
+        counterBilling: _int(json["counter_billing"]),
+        specialPooja: _int(json["special_pooja"]),
+        noShowReport: _int(json["no_show_report"]),
+        dpcat: _int(json["dpcat"]),
+        isKooru: _int(json["is_kooru"]),
+        createdDate: DateTime.tryParse(json["created_date"]?.toString() ?? ''),
+        forkiosk: _int(json["forkiosk"]),
     );
 
     Map<String, dynamic> toJson() => {
@@ -291,7 +298,9 @@ class Data {
         "no_show_report": noShowReport,
         "dpcat": dpcat,
         "is_kooru": isKooru,
-        "created_date": "${createdDate.year.toString().padLeft(4, '0')}-${createdDate.month.toString().padLeft(2, '0')}-${createdDate.day.toString().padLeft(2, '0')}",
+        "created_date": createdDate == null
+            ? null
+            : "${createdDate!.year.toString().padLeft(4, '0')}-${createdDate!.month.toString().padLeft(2, '0')}-${createdDate!.day.toString().padLeft(2, '0')}",
         "forkiosk": forkiosk,
     };
 }

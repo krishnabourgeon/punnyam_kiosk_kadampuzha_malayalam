@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:async/async.dart';
+import 'package:kiosk/services/helpers.dart';
 import 'package:kiosk/models/login_response_model.dart';
 import 'package:kiosk/services/provider_helper_class.dart';
 import 'package:kiosk/services/shared_preference_helper.dart';
@@ -26,7 +28,38 @@ class AuthProvider extends ProviderHelperClass with ChangeNotifier {
   bool isLoginFormValidated = false;
   bool isRegisterFormValidated = false;
   bool isRememberCredentials = true;
-  Future<void> login({Function? onSuccess, Function? onFailure}) async {
+  // Future<void> login({Function? onSuccess, Function? onFailure}) async {
+  //   // updateLoadState(LoaderState.loading);
+  //   Result res;
+  //   try {
+  //     res = await serviceConfig.login(
+  //       email: loginUsernameController.text,
+  //       password: loginPasswordController.text,
+  //     );
+  //   } catch (e) {
+  //     // Network / server errors (e.g. server unreachable) - show a message
+  //     // instead of an unhandled exception.
+  //     debugPrint('Login error: $e');
+  //     Helpers.successToast('Unable to reach server. Please try again later');
+  //     res = Result.error(e);
+  //   }
+  //   if (res.isValue) {
+  //     LoginResponseModel loginResponseModel = res.asValue!.value;
+  //     await SharedPreferenceHelper.saveToken(loginResponseModel.token ?? '');
+
+  //     if (onSuccess != null) onSuccess();
+  //     // updateLoadState(LoaderState.loaded);
+  //   } else {
+  //     errorToast = 'Login failed';
+  //     if (onFailure != null) onFailure();
+  //     // updateLoadState(LoaderState.loaded);
+  //   }
+  //   notifyListeners();
+  // }
+
+
+
+    Future<void> login({Function? onSuccess, Function? onFailure}) async {
     // updateLoadState(LoaderState.loading);
     var res = await serviceConfig.login(
       email: loginUsernameController.text,
